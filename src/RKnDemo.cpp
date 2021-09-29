@@ -27,14 +27,12 @@
 #include <iostream>
 
 using namespace std;
-const double g=9.81;    ///< acceleration [m/s^2]
-const double m=1.0;     ///< mass of object [kg], nb for simple projectile motion does not depend on the mass
-const double air_k=0.1; ///< constant for air resistance. mass DOES matter with air resistance
+
 
 struct Params {
-  double g;
-  double m;
-  double air_k;
+  double g;   ///< acceleration [m/s^2]
+  double m;   ///< mass of object [kg], nb proj. In vacuum funcs do not depend on the mass
+  double air_k;  ///< constant for air resistance. mass DOES matter with air resistance
 } ;
 
 // functions to describe simple projectile motion
@@ -55,7 +53,8 @@ double f_ri(double x, const vector<double> &y, void *params=0){
 /// \param[in] y dependent variables
 double f_vi(double x, const vector<double> &y, void *params=0){ 
   (void) x;
-  return -air_k * sqrt(y[1]*y[1] + y[3]*y[3]) * y[1] / m;
+  Params *p = (Params*)params;
+  return -p->air_k * sqrt(y[1]*y[1] + y[3]*y[3]) * y[1] / p->m;
   // return 0;  // if no air, no forces/acceleration along i direction in this problem
 }
 
