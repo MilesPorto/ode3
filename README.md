@@ -1,5 +1,7 @@
 # ode3
 
+To build the ODE library and example programs, simply type `make` in this top level ode3 directory.
+
 baseball_drag.ipynb : this notebook describes the drag force equations used in the text.
 
 
