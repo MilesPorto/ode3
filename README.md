@@ -9,9 +9,7 @@ Description of example programs:<br>
 
 **RKnTest**: Solves a single 1st order ODE using the single equation RK4 solver and the ODE array solver
 
-**RKnStep**: Solves a single 1st order ODE using the single equation RK4 solver and the ODE array solver<br>
-A basic example of the ODE array solver is applied to projectile motion with a simple model of air resistance, force of air resistance = -kv^2<br>
-At each step in the calculation time and x,t positions are printed.<br>
+**RKnStep**: A basic example of the ODE array solver is applied to projectile motion with a simple model of air resistance, force of air resistance = -kv^2<br>. At each step in the elapsed time and x,y positions are printed.<br>
 Optional parameters [default values]<br>
 * -v initial_velocity [100] m/s
 * -t angle_thera [45] degrees
@@ -40,6 +38,8 @@ The starter code here (projGSL.cpp) demonstrates very basic usage of the gsl for
 
 This example solves the 2D projectile motion problem with a simple model for air resistance. After each step, data are stored in ROOT TGraphs, which are then displayed at the conclusion of the calculation.
 
+The gsl provides a number of ODE solvers and a variety of interfaces.  Some of the solvers (not R-K methods) use the Jacobian matrix, which gives the devivative of the function wrt the dependent parameters.  See the gsl examples for details.
+
 Python starter code
 ---
 
@@ -47,6 +47,6 @@ Two examples are given for using ODE solvers from the scipy.integrate sub-packag
 
     Solution (projScPY2.py[ipynb]) using a more modern interface scipy.integrate.solve_ivp. See also: https://docs.scipy.org/doc/scipy/reference/tutorial/integrate.html and https://www.programcreek.com/python/example/119375/scipy.integrate.solve_ivp
 
-    Solution (projScPY.py[ipynb]) using an older interface scipy.integrate.odeint¶ (see comments here: https://docs.scipy.org/doc/scipy/reference/integrate.html).
+    Solution (projScPY.py[ipynb]) using an older interface scipy.integrate.odeint¶ (see comments here: https://docs.scipy.org/doc/scipy/reference/integrate.html).  I do not recommend using this interface any longer.
 
 The notebook versions contain additional comments on using the integrators.
