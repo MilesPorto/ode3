@@ -3,6 +3,15 @@
 physx630 odelib
 ---
 
+********************************
+(xend,z0,theta0) = (18.500000,1.400000,1.000000)
+v_pitch = 45.200100 m/s
+********************************
+
+
+Notes for vterm program 
+To run the code that generates the graph and pdf, simply make vterm.cpp and run it in src, no inputs from the command line are needed. To check the accuracy of the solution, I can first do a couple simple checks. The terminal velocity should definitely increase as mass increases, which it does in the graph, and it should approach 0 as the mass approaches 0, because then the force of gravity will approach 0 and any air resistance will dominate gravity. Also, the velocities should not approach anything outrageous as mass increases. All of this is displayed in the graph. Then, I can compare the soltion to known dependence of terminal velocity on mass. Terminal velocity is proportional to the square root of the mass, and our solution captures this relationship. So the solution seems pretty accurate.
+
 To build the ODE library and example programs, simply type `make` in this top level ode3 directory.
 
 Description of example programs:<br>

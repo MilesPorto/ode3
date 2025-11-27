@@ -88,8 +88,14 @@ double f_vj(double x, const vector<double> &y, void *params=0){
 /// Returns 0(1) to flag continuation(termination) of calculation 
 double f_stop(double x, const vector<double> &y, void *params=0){
   (void) x;
-  if (y[2]<0) return 1;  // stop calulation if the current step takes height to negative value
-  return 0;  // continue calculation
+  Params *p = (Params*)params;
+  
+  // Stop when vertical velocity is downward and acceleration is near zero
+  double aj = -p->air_k * sqrt(y[1]*y[1] + y[3]*y[3]) * y[3] / p->m - p->g;
+  
+  if (y[3] < 0 && fabs(aj) < 0.0001) return 1;  // falling AND near-zero acceleration
+  
+  return 0;
 }
 /// \brief Use RK4 method to describe simple projectile motion.
 int main(int argc, char **argv){
@@ -99,10 +105,18 @@ int main(int argc, char **argv){
   pars.g=9.81;
   pars.m=10.0;
   pars.air_k=0.1;
+  std::vector<double> mlist;
   void *p_par = (void*) &pars;
+  for (double x = 0.001; x < 0.01 - 1e-12; x += 0.001) mlist.push_back(x);
+  for (double x = 0.01;  x < 0.1  - 1e-12; x += 0.01)  mlist.push_back(x);
+  for (double x = 0.1;   x <= 10  + 1e-12; x += 0.1)   mlist.push_back(x);
+  //cout<<mlist[1]<<mlist[2]<<mlist[3]<<endl;
 
-  double theta=45;   // initial angle degrees
-  double v0=100;     // m/s
+  TGraph *tgVterm = new TGraph();  // Use pointer instead
+  int ipoint = 0;
+
+  double theta=180;   // initial angle degrees
+  double v0=1;     // m/s
   
   int c;
   while ((c = getopt (argc, argv, "v:t:m:k:")) != -1)
@@ -127,9 +141,8 @@ int main(int argc, char **argv){
 
   // ******************************************************************************
   // ** this block is useful for supporting both high and std resolution screens **
-  UInt_t dh = gClient->GetDisplayHeight()/2;   // fix plot to 1/2 screen height  
-  //UInt_t dw = gClient->GetDisplayWidth();
-  UInt_t dw = 1.1*dh;
+  UInt_t dw = 800;
+  UInt_t dh = 600;
   // ******************************************************************************
 
   // *** test 2: Use RK4SolveN to calculate simple projectile motion
@@ -138,38 +151,120 @@ int main(int argc, char **argv){
   v_fun[1]=f_vi;
   v_fun[2]=f_rj;
   v_fun[3]=f_vj;
+  
+  for (int j=0; j<(int)mlist.size();j++) {
 
-  vector<double> y(4);
-  // initial conditions are starting position, velocity and angle, equivalently ri,rj,vi,vj
-  y[0]=0;   // init position on i-axis
-  y[1]=v0*cos(theta*3.14159/180);  // init velocity along i axis
-  y[2]=0;   // repeat for j-axis
-  y[3]=v0*sin(theta*3.14159/180);
-  cout << "Vinit: " << v0 << " m/s" << endl;
-  cout << "Angle: " << theta << " deg" << endl;
-  cout << "(vx,vy) " << y[1] << " , "  <<  y[3] << " m/s" << endl;
+    // set parameter mass
+    pars.m = mlist[j];
+
+    // reset initial conditions each time
+    vector<double> y(4);
+    y[0] = 0;
+    y[1] = v0*cos(theta * M_PI/180.0);
+    y[2] = 0;
+    y[3] = v0*sin(theta * M_PI/180.0);
+
+    double t0 = 0;
+    double tmax = 20;
+    int nsteps = 1000;
+
+    // run RK4 for this mass
+    auto tgN = RK4SolveN(v_fun, y, nsteps, t0, tmax, p_par, f_stop);
+    
+
+    // extract final velocity from the LAST point in the RK4 output
+    int N = tgN[1].GetN();
+    //cout<<N<<endl;
+    /*
+    if (mlist[j]==0.01){
+      cout<<N<<endl;
+      double t_test, vi_test,vj_test;
+      for (int i=0;i<N;i++){
+        tgN[1].GetPoint(i, t_test, vi_test);
+        tgN[3].GetPoint(i, t_test, vj_test);
+	cout<<"N: "<<i<<" vi: "<<vi_test<<" vj: "<<vj_test<<endl;
+      }
+    }*/
+    
+    
+    double t_last, vi_last, vj_last;
+
+    tgN[1].GetPoint(N-1, t_last, vi_last);
+    tgN[3].GetPoint(N-1, t_last, vj_last);
+    //cout<<vi_last<<vj_last<<endl;
+    if (std::isnan(vi_last) || std::isnan(vj_last)){
+      double t_test, vi_test,vj_test;
+      for (int i=0;i<N;i++){
+        tgN[1].GetPoint(i, t_test, vi_test);
+        tgN[3].GetPoint(i, t_test, vj_test);
+	cout<<"N: "<<i<<" vi: "<<vi_test<<" vj: "<<vj_test<<endl;
+      }
+      vi_last=vi_test;
+      vj_last=vj_test;
+    }
+    //cout<<"y velocity squared: "<<vj_last*vj_last<<endl;
+    //cout<<"x velocity squared: "<<vi_last*vi_last<<endl;
+
+    // terminal velocity magnitude
+    double vterm = sqrt(vi_last*vi_last + vj_last*vj_last);
+    //cout<<vterm<<endl;
+
+    // store in the output graph
+    if (!std::isnan(vterm)){
+      tgVterm->SetPoint(ipoint++, mlist[j], vterm);}
+  }
+  //cout << "Number of points in graph: " << tgVterm->GetN() << endl;
+
+  // Debug: print first few points
+  for (int i = 0; i < min(5, tgVterm->GetN()); i++) {
+    double m, v;
+    tgVterm->GetPoint(i, m, v);
+    cout << "Point " << i << ": mass=" << m << ", vterm=" << v << endl;
+  }
+  
+
+  //tgVterm.SetPoint(0,0.1,5);
+
+  /*
+  TGraph tgE;   // energy vs time
+  int N = tgN[0].GetN();
+
+  for (int i = 0; i < N; ++i) {
+    double t, ri, rj, vi, vj;
+
+    tgN[0].GetPoint(i, t, ri);
+    tgN[1].GetPoint(i, t, vi);
+    tgN[2].GetPoint(i, t, rj);
+    tgN[3].GetPoint(i, t, vj);
+
+    double E = pars.m * pars.g * rj
+             + 0.5 * pars.m * (vi*vi + vj*vj);
+
+    tgE.SetPoint(i, t, E);
+  }
+  */
 
   
-  double x=0;           // t0
-  double xmax=20;  // tmax
-  int nsteps=200;
-  // fixed step size algorithm
-  auto tgN = RK4SolveN(v_fun, y, nsteps, x, xmax, p_par, f_stop);
-  // example of variable step algorithm, here the estimate accuracy is limited to 1e-4
-  // in the plot you will see the change in step size thoughout the time interval
-  //auto tgN = RK4SolveNA(v_fun, y, nsteps, x, xmax, p_par, f_stop,1e-4);
-  
-  TCanvas *c2 = new TCanvas("c2","ODE solutions 2",dw,dh);
-  tgN[2].Draw("al*");
+  TCanvas *c2 = new TCanvas("c2","vterm vs mass",dw,dh);
+  tgVterm->Draw("al*");
+  tgVterm->SetTitle("Terminal Velocity vs Mass - Notes in readme;Mass (kg);Terminal Velocity (m/s)");
   c2->Draw();
+  c2->SaveAs("../vterm.pdf");
 
-  cout << "Final velocity = " << sqrt(y[1]*y[1]+y[3]*y[3]) << endl;
-  
+
+
+  //cout << "Final velocity = " << sqrt(y[1]*y[1]+y[3]*y[3]) << endl;
+  /*
   // save our graphs
   TFile *tf=new TFile("RKnDemo.root","recreate");
   for (unsigned i=0; i<v_fun.size(); i++){
     tgN[i].Write();
   }
+  tgE.Write();
+  tf->Close();
+  */
+  TFile* tf = new TFile("vterm.root","RECREATE");
+  tgVterm->Write("vterm_vs_mass");
   tf->Close();
 
   
